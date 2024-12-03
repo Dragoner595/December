@@ -20,3 +20,5 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 # Import the MoViNet model from TensorFlow Models (tf-models-official) for the MoViNet model
 from official.projects.movinet.modeling import movinet
 from official.projects.movinet.modeling import movinet_model
+
+URL = 'https://storage.googleapis.com/thumos14_files/UCF101_videos.zip'
