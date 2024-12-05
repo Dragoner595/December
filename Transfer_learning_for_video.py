@@ -23,3 +23,7 @@ from official.projects.movinet.modeling import movinet_model
 
 URL = 'https://storage.googleapis.com/thumos14_files/UCF101_videos.zip'
 download_dir = pathlib.Path('./UCF101_subset/')
+subset_paths = download_ufc_101_subset(URL, 
+                        num_classes = 10, 
+                        splits = {"train": 30, "test": 20}, 
+                        download_dir = download_dir)
