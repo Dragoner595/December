@@ -27,3 +27,6 @@ subset_paths = download_ufc_101_subset(URL,
                         num_classes = 10, 
                         splits = {"train": 30, "test": 20}, 
                         download_dir = download_dir)
+
+batch_size = 8
+num_frames = 8
