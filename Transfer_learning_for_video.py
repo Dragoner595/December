@@ -30,3 +30,6 @@ subset_paths = download_ufc_101_subset(URL,
 
 batch_size = 8
 num_frames = 8
+
+output_signature = (tf.TensorSpec(shape = (None, None, None, 3), dtype = tf.float32),
+                    tf.TensorSpec(shape = (), dtype = tf.int16))
