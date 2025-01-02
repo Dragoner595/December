@@ -56,3 +56,92 @@ second_half, _ = gru (inputs[:,5:,:],initial_state = state)  # USa the state to 
 
 print(np.allclose(result[:,:5,:],first_half))
 print(np.allclose(result[:,5:,:], second_half))
+
+model_id = 'a0'
+resolution = 224
+
+tf.keras.backend.clear_session()
+
+backbone = movinet.Movinet(model_id=model_id)
+backbone.trainable = False
+
+# Set num_classes=600 to load the pre-trained weights from the original model
+model = movinet_model.MovinetClassifier(backbone=backbone, num_classes=600)
+model.build([None, None, None, None, 3])
+
+# Load pre-trained weights
+!wget https://storage.googleapis.com/tf_model_garden/vision/movinet/movinet_a0_base.tar.gz -O movinet_a0_base.tar.gz -q
+!tar -xvf movinet_a0_base.tar.gz
+
+checkpoint_dir = f'movinet_{model_id}_base'
+checkpoint_path = tf.train.latest_checkpoint(checkpoint_dir)
+checkpoint = tf.train.Checkpoint(model=model)
+status = checkpoint.restore(checkpoint_path)
+status.assert_existing_objects_matched()
+
+def build_classifier(batch_size, num_frames, resolution, backbone, num_classes):
+  """Builds a classifier on top of a backbone model."""
+  model = movinet_model.MovinetClassifier(
+      backbone=backbone,
+      num_classes=num_classes)
+  model.build([batch_size, num_frames, resolution, resolution, 3])
+
+  return model
+
+model = build_classifier(batch_size, num_frames, resolution, backbone, 10)
+
+num_epochs = 2
+
+loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+optimizer = tf.keras.optimizers.Adam(learning_rate = 0.001)
+
+model.compile(loss=loss_obj, optimizer=optimizer, metrics=['accuracy'])
+
+results = model.fit(train_ds,
+                    validation_data=test_ds,
+                    epochs=num_epochs,
+                    validation_freq=1,
+                    verbose=1)
+
+model.evaluate(test_ds, return_dict=True)
+
+def get_actual_predicted_labels(dataset):
+  """
+    Create a list of actual ground truth values and the predictions from the model.
+
+    Args:
+      dataset: An iterable data structure, such as a TensorFlow Dataset, with features and labels.
+
+    Return:
+      Ground truth and predicted values for a particular dataset.
+  """
+  actual = [labels for _, labels in dataset.unbatch()]
+  predicted = model.predict(dataset)
+
+  actual = tf.stack(actual, axis=0)
+  predicted = tf.concat(predicted, axis=0)
+  predicted = tf.argmax(predicted, axis=1)
+
+  return actual, predicted
+
+
+def plot_confusion_matrix(actual, predicted, labels, ds_type):
+  cm = tf.math.confusion_matrix(actual, predicted)
+  ax = sns.heatmap(cm, annot=True, fmt='g')
+  sns.set(rc={'figure.figsize':(12, 12)})
+  sns.set(font_scale=1.4)
+  ax.set_title('Confusion matrix of action recognition for ' + ds_type)
+  ax.set_xlabel('Predicted Action')
+  ax.set_ylabel('Actual Action')
+  plt.xticks(rotation=90)
+  plt.yticks(rotation=0)
+  ax.xaxis.set_ticklabels(labels)
+  ax.yaxis.set_ticklabels(labels)
+
+
+fg = FrameGenerator(subset_paths['train'], num_frames, training = True)
+label_names = list(fg.class_ids_for_name.keys())
+
+actual, predicted = get_actual_predicted_labels(test_ds)
+plot_confusion_matrix(actual, predicted, label_names, 'test')
